@@ -6,10 +6,6 @@ pipeline {
         TF_IN_AUTOMATION = "true"
     }
 
-    triggers {
-        pollSCM('H/2 * * * *')
-    }
-
     stages {
 
         stage('Checkout') {
