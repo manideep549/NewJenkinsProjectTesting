@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = "ap-south-2"
+        AWS_REGION = "eu-north-1"
         TF_IN_AUTOMATION = "true"
     }
 
@@ -14,7 +14,7 @@ pipeline {
             }
         }
 
-        stage('Terraform Commands') {
+        stage('Terraform Init') {
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
@@ -23,7 +23,30 @@ pipeline {
                     sh '''
                         export AWS_DEFAULT_REGION=$AWS_REGION
                         terraform init
-                        terraform validate
+                    '''
+                }
+            }
+        }
+
+        stage('Terraform Validate') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-s3-deploy-creds'
+                ]]) {
+                    sh 'terraform validate'
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-s3-deploy-creds'
+                ]]) {
+                    sh '''
+                        export AWS_DEFAULT_REGION=$AWS_REGION
                         terraform plan -out=tfplan
                     '''
                 }
@@ -43,24 +66,6 @@ pipeline {
                         export AWS_DEFAULT_REGION=$AWS_REGION
                         terraform apply -auto-approve tfplan
                     '''
-                }
-            }
-        }
-    }
-}
-            }
-        }
-
-        stage('Terraform Apply (Only PROD)') {
-            when {
-                branch 'prod'
-            }
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-s3-deploy-creds'
-                ]]) {
-                    sh 'terraform apply -auto-approve tfplan'
                 }
             }
         }
