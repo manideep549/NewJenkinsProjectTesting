@@ -14,26 +14,40 @@ pipeline {
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform Commands') {
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
                     credentialsId: 'aws-s3-deploy-creds'
                 ]]) {
-                    sh 'terraform init'
+                    sh '''
+                        export AWS_DEFAULT_REGION=$AWS_REGION
+                        terraform init
+                        terraform validate
+                        terraform plan -out=tfplan
+                    '''
                 }
             }
         }
 
-        stage('Terraform Validate') {
+        stage('Terraform Apply (Only PROD)') {
+            when {
+                branch 'prod'
+            }
             steps {
-                sh 'terraform validate'
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-s3-deploy-creds'
+                ]]) {
+                    sh '''
+                        export AWS_DEFAULT_REGION=$AWS_REGION
+                        terraform apply -auto-approve tfplan
+                    '''
+                }
             }
         }
-
-        stage('Terraform Plan') {
-            steps {
-                sh 'terraform plan -out=tfplan'
+    }
+}
             }
         }
 
